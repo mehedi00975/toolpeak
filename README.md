@@ -108,7 +108,7 @@ becoming usable.
 ## Tests
 
 ```
-npm test        # 229 tests, ~30 seconds
+npm test        # 258 tests, ~60 seconds
 ```
 
 | Suite | Covers |
@@ -121,6 +121,8 @@ npm test        # 229 tests, ~30 seconds
 | `qr-scannable.test.js` | rendered codes decoded by an independent library |
 | `build.test.js` | output: word counts, FAQs, links, metadata, page weight |
 | `config.test.js` | env documentation, no committed secrets, scripts |
+| `ad-integration.test.js` | Adsterra snippet shapes, layout stability, ads.txt |
+| `deploy.test.js` | works on GitHub Pages and Cloudflare without rewrites |
 
 Two things are worth knowing about the suite.
 
@@ -142,6 +144,30 @@ password field.
 
 Note that `node --test tests/` fails on this Node version — the directory is
 resolved as a module. Use `npm test`, which passes a glob.
+
+---
+
+## Deploying to GitHub Pages (free, no domain needed)
+
+**The repository must be named `yourname.github.io`.** Any other name serves
+the site from a subdirectory, where every root-relative link 404s and
+`ads.txt` becomes unreachable by ad networks.
+
+1. Create a public repository named exactly `yourname.github.io`.
+2. Push this code to `main`.
+3. **Settings → Pages → Source: GitHub Actions.**
+4. **Settings → Secrets and variables → Actions**, Variables tab: set
+   `SITE_URL`, `CONTACT_EMAIL` and `PUBLISHER_NAME`. Ad snippets go in the
+   Secrets tab.
+
+`.github/workflows/deploy.yml` runs the test suite, builds, and publishes. It
+also writes `.nojekyll` so Pages does not hide underscore-prefixed files.
+
+`_redirects` and `_headers` are Cloudflare features and are ignored here, so
+extensionless URLs will not resolve. Nothing depends on them — every link
+already includes `.html`, and `deploy.test.js` enforces that.
+
+See `ADSTERRA.md` for the trade-offs versus a paid domain.
 
 ---
 

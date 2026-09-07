@@ -33,12 +33,82 @@ not executed properly.
 
 ---
 
+## No money for a domain yet? Start on GitHub Pages
+
+**Adsterra accepts free subdomains.** Their own blog states that they verify
+and accept Blogger and WordPress subdomains, which is unusual — AdSense does
+not. So `yourname.github.io` is a legitimate starting point, and it costs
+nothing.
+
+There is one hard requirement, and getting it wrong breaks everything.
+
+### Name the repository `yourname.github.io`
+
+GitHub Pages serves two kinds of repository:
+
+| Repository name | Site URL | Works here? |
+|---|---|---|
+| `yourname.github.io` | `https://yourname.github.io/` | **Yes** |
+| anything else | `https://yourname.github.io/reponame/` | **No** |
+
+The second form puts the site in a subdirectory. Every internal link on this
+site is root-relative (`/tools/word-counter.html`), so on a project repository
+all 1,100 of them point outside the site and 404. Worse, `ads.txt` would live
+at `/reponame/ads.txt`, and ad networks only ever read `/ads.txt` at the root —
+so Adsterra could never verify you.
+
+`github.io` is on the Public Suffix List, which means `yourname.github.io` is
+treated as its own root domain. Name the repository correctly and `ads.txt`
+lands exactly where the crawler looks. Tested and confirmed: every page,
+`ads.txt`, `sitemap.xml` and `robots.txt` return 200 with no code changes.
+
+### Setting it up
+
+1. Create a repository named exactly `yourname.github.io`, public.
+2. Push this code to `main`.
+3. **Settings → Pages → Source: GitHub Actions.**
+4. **Settings → Secrets and variables → Actions → Variables** tab:
+   - `SITE_URL` = `https://yourname.github.io`
+   - `CONTACT_EMAIL` = your email
+   - `PUBLISHER_NAME` = your name
+5. Push. `.github/workflows/deploy.yml` runs the tests, builds, and publishes.
+
+Ad snippets go in the **Secrets** tab, not Variables, once Adsterra approves
+you. Same protection as Cloudflare environment variables: they never enter the
+repository.
+
+### What you give up
+
+- **`_redirects` and `_headers` do not work.** Extensionless URLs
+  (`/tools/word-counter`) will not resolve, and the security headers are not
+  applied. The site is built so that neither matters — every link already
+  includes `.html`, and a test enforces that.
+- **A `.github.io` address looks less professional**, and Adsterra says so
+  plainly: free subdomains "don't seem credible", like an email ending in
+  @gmail. It is a real disadvantage at review time, not a fake one.
+- **You cannot move the domain later without losing rankings.** Redirects from
+  `github.io` are not possible; you would start the SEO over.
+
+### The honest recommendation
+
+Deploy to GitHub Pages now, publish articles, get indexed, build traffic. Buy
+the `.com` when you can afford it — around $10 for the first year — and move
+before you apply to Adsterra, or shortly after. A domain plus a month of real
+traffic converts far better at review than a fresh `.github.io`.
+
+If money is genuinely tight, applying from `yourname.github.io` is still worth
+doing. Adsterra's own documentation says they accept subdomains, and the
+downside of a rejection is that you reapply later from the paid domain.
+
+---
+
 ## What you have to do
 
 ### 1. Before applying
 
-**Buy the domain and deploy.** Adsterra reviews a live site, not a repository.
-Cloudflare Pages, build command `npm run build`, output directory `dist`.
+**Deploy the site.** Adsterra reviews a live site, not a repository. Either
+GitHub Pages (free, see above) or Cloudflare Pages with build command
+`npm run build` and output directory `dist`.
 
 **Set these environment variables** in the Pages dashboard:
 
