@@ -14,7 +14,16 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const DIST = path.join(__dirname, "..", "dist");
+const ROOT = path.join(__dirname, "..");
+const DIST = path.join(ROOT, "dist");
+
+// Build on demand so the suite works in a fresh clone (dist/ is git-ignored).
+if (!fs.existsSync(path.join(DIST, "index.html"))) {
+  require("node:child_process").execFileSync(
+    process.execPath, ["build.js"], { cwd: ROOT, stdio: "pipe" }
+  );
+}
+
 const hasBuild = fs.existsSync(path.join(DIST, "index.html"));
 
 const read = rel => fs.readFileSync(path.join(DIST, rel), "utf8");

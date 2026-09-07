@@ -14,9 +14,18 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 const { JSDOM, VirtualConsole } = require("jsdom");
 
-const DIST = path.join(__dirname, "..", "..", "dist");
+const ROOT = path.join(__dirname, "..", "..");
+const DIST = path.join(ROOT, "dist");
+
+// dist/ is git-ignored, so a fresh clone has nothing to test against. Build it
+// rather than skipping: a suite that silently reports success because it found
+// no pages is worse than one that takes an extra second.
+if (!fs.existsSync(path.join(DIST, "index.html"))) {
+  execFileSync(process.execPath, ["build.js"], { cwd: ROOT, stdio: "pipe" });
+}
 
 const distExists = fs.existsSync(path.join(DIST, "index.html"));
 
