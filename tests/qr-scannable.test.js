@@ -158,6 +158,36 @@ test("qr: every payload builder produces a scannable code", suite, () => {
   }
 });
 
+test("qr: Wi-Fi payloads escape the five reserved characters", suite, () => {
+  // Semicolons, commas, colons, backslashes and double quotes are field
+  // delimiters in the WIFI: format. An unescaped one truncates the password
+  // and the phone joins with the wrong credentials, or not at all.
+  const cases = [
+    [";", "WIFI:T:WPA;S:Net;P:pa\\;ss;;"],
+    [",", "WIFI:T:WPA;S:Net;P:pa\\,ss;;"],
+    [":", "WIFI:T:WPA;S:Net;P:pa\\:ss;;"],
+    ["\\", "WIFI:T:WPA;S:Net;P:pa\\\\ss;;"],
+    ['"', 'WIFI:T:WPA;S:Net;P:pa\\"ss;;'],
+  ];
+
+  for (const [char, expected] of cases) {
+    const payload = QR.payload.wifi("Net", `pa${char}ss`, "WPA");
+    assert.strictEqual(payload, expected, `failed to escape ${JSON.stringify(char)}`);
+  }
+});
+
+test("qr: reserved characters in the network name are escaped too", suite, () => {
+  assert.strictEqual(QR.payload.wifi("My:Net", "pw", "WPA"),
+    "WIFI:T:WPA;S:My\\:Net;P:pw;;");
+  assert.strictEqual(QR.payload.wifi("A;B", "pw", "WPA"),
+    "WIFI:T:WPA;S:A\\;B;P:pw;;");
+});
+
+test("qr: an escaped Wi-Fi payload is still scannable", suite, () => {
+  const payload = QR.payload.wifi("Cafe;Guest", 'p@ss,w"rd', "WPA");
+  assert.strictEqual(roundTrip(payload), payload);
+});
+
 test("qr: an explicitly chosen mask still decodes", suite, () => {
   for (let mask = 0; mask < 8; mask++) {
     assert.strictEqual(roundTrip("mask test", { mask }), "mask test", `mask ${mask} failed`);

@@ -93,9 +93,14 @@
     }
   }
 
+  /**
+   * Collapses the reserved ad space when the visitor declines. The slot keeps
+   * its height by default so that an accepted ad does not shove the page
+   * around; once we know no ad is coming, the space is given back.
+   */
   function hidePlaceholders() {
     Array.prototype.forEach.call(document.querySelectorAll(".adslot"), function (slot) {
-      slot.style.display = "none";
+      slot.className += " is-dismissed";
     });
   }
 

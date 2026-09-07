@@ -460,11 +460,22 @@ details .body > :last-child { margin-bottom: 0; }
 /* ------------------------------------------------------------------ *
  * Ads — reserved space so nothing shifts when a slot fills (good CLS)
  * ------------------------------------------------------------------ */
+/* The banner slot reserves its height up front, before any ad arrives.
+   Filling an empty element later is what causes layout shift, and a bad CLS
+   score costs search ranking on exactly the mobile traffic this site wants.
+   Heights match the Adsterra creative sizes: 320x50 on phones, 728x90 above. */
 .adslot {
   margin: 1.6rem 0; text-align: center; overflow: hidden;
-  min-height: 100px; display: flex; align-items: center; justify-content: center;
+  min-height: 50px; display: flex; align-items: center; justify-content: center;
 }
-.adslot:empty { display: none; }
+@media (min-width: 760px) {
+  .adslot { min-height: 90px; }
+}
+
+/* Only collapse the slot when no ad is configured at all — the build omits
+   the element in that case, so this is a belt-and-braces rule for a page
+   built with ads that the visitor then declined. */
+.adslot.is-dismissed { display: none; }
 .adslot[data-placeholder] {
   border: 1px dashed #cbd5e1; border-radius: 10px;
   color: #94a3b8; font-size: .78rem; background: var(--surface);
