@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ToolPeak Admin</title>
+<style>
+:root {
+  --brand: #1d4ed8; --ink: #0f172a; --muted: #64748b; --line: #e2e8f0;
+  --bg: #f8fafc; --surface: #fff; --ok: #059669; --warn: #b45309; --bad: #dc2626;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+header {
+  background: var(--surface); border-bottom: 1px solid var(--line);
+  padding: .9rem 1.2rem; display: flex; align-items: center; gap: 1rem;
+  position: sticky; top: 0; z-index: 20;
+}
+header h1 { font-size: 1.05rem; margin: 0; }
+header .badge {
+  font-size: .74rem; color: var(--muted); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 999px; padding: .16rem .6rem;
+}
+nav { margin-left: auto; display: flex; gap: .3rem; }
+nav button {
+  border: 1px solid transparent; background: none; padding: .45rem .85rem;
+  border-radius: 8px; cursor: pointer; font: inherit; color: var(--muted);
+}
+nav button:hover { background: var(--bg); }
+nav button[aria-selected=true] { background: var(--brand); color: #fff; }
+
+main { max-width: 940px; margin: 0 auto; padding: 1.4rem 1.2rem 4rem; }
+section[hidden] { display: none; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; padding: 1.1rem 1.2rem; margin-bottom: 1.1rem;
+}
+.card h2 { margin: 0 0 .2rem; font-size: 1rem; }
+.card .note { color: var(--muted); font-size: .85rem; margin: .3rem 0 1rem; }
+
+label { display: block; margin-bottom: 1rem; }
+label .lab { display: block; font-weight: 600; font-size: .85rem; margin-bottom: .3rem; }
+label .help { display: block; color: var(--muted); font-size: .78rem; margin-top: .28rem; }
+input[type=text], input[type=date], textarea, select {
+  width: 100%; padding: .55rem .7rem; border: 1px solid var(--line);
+  border-radius: 8px; font: inherit; background: #fff; color: var(--ink);
+}
+input:focus, textarea:focus, select:focus {
+  outline: 2px solid var(--brand); outline-offset: -1px; border-color: var(--brand);
+}
+textarea { min-height: 82px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .84rem; }
+textarea.prose { font-family: inherit; font-size: .92rem; min-height: 340px; }
+
+.btn {
+  background: var(--brand); color: #fff; border: 0; padding: .55rem 1.1rem;
+  border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer;
+}
+.btn:hover { filter: brightness(1.07); }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn.sec { background: var(--surface); color: var(--ink); border: 1px solid var(--line); font-weight: 500; }
+.btn.danger { background: var(--surface); color: var(--bad); border: 1px solid #fecaca; font-weight: 500; }
+.row { display: flex; gap: .55rem; flex-wrap: wrap; align-items: center; }
+
+.status { padding: .55rem .8rem; border-radius: 8px; font-size: .85rem; margin-bottom: 1rem; display: none; }
+.status.show { display: block; }
+.status.ok { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+.status.err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.status.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .7rem; }
+.stat { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: .7rem .8rem; }
+.stat b { display: block; font-size: 1.3rem; }
+.stat span { color: var(--muted); font-size: .78rem; }
+
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th, td { text-align: left; padding: .55rem .5rem; border-bottom: 1px solid var(--line); }
+th { font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+td .t { font-weight: 600; }
+td .s { color: var(--muted); font-size: .8rem; }
+.pill { font-size: .7rem; padding: .1rem .45rem; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.pill.draft { background: #fffbeb; color: var(--warn); border-color: #fde68a; }
+
+pre.log {
+  background: #0f172a; color: #e2e8f0; padding: .8rem; border-radius: 8px;
+  font-size: .78rem; overflow: auto; max-height: 300px; white-space: pre-wrap; margin: .6rem 0 0;
+}
+.faq { border: 1px solid var(--line); border-radius: 10px; padding: .8rem; margin-bottom: .6rem; background: var(--bg); }
+.faq .row { justify-content: space-between; margin-bottom: .4rem; }
+.faq strong { font-size: .8rem; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+.chips label { margin: 0; display: inline-flex; align-items: center; gap: .3rem;
+  border: 1px solid var(--line); border-radius: 999px; padding: .25rem .65rem;
+  font-size: .82rem; background: var(--bg); cursor: pointer; }
+.chips input { margin: 0; }
+.locked { background: #fffbeb; border-color: #fde68a; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ToolPeak Admin</h1>
+  <span class="badge" id="site-badge">—</span>
+  <nav>
+    <button id="tab-dash" aria-selected="true">Dashboard</button>
+    <button id="tab-posts" aria-selected="false">Posts</button>
+    <button id="tab-write" aria-selected="false">Write</button>
+    <button id="tab-settings" aria-selected="false">Settings</button>
+  </nav>
+</header>
+
+<main>
+  <div class="status" id="status"></div>
+
+  <!-- ---------------- Dashboard ---------------- -->
+  <section id="pane-dash">
+    <div class="card">
+      <h2>Overview</h2>
+      <div class="grid" id="stats"></div>
+    </div>
+
+    <div class="card">
+      <h2>Publish</h2>
+      <p class="note">Build regenerates <code>dist/</code>. Run the tests before
+      you push — they check the tools, the consent gate and the ad wiring.</p>
+      <div class="row">
+        <button class="btn" id="do-build">Build site</button>
+        <button class="btn sec" id="do-test">Run tests</button>
+      </div>
+      <pre class="log" id="log" hidden></pre>
+    </div>
+  </section>
+
+  <!-- ---------------- Posts ---------------- -->
+  <section id="pane-posts" hidden>
+    <div class="card">
+      <h2>Articles</h2>
+      <p class="note" id="posts-count">—</p>
+      <table>
+        <thead><tr><th>Title</th><th>Date</th><th>Words</th><th>FAQs</th><th></th></tr></thead>
+        <tbody id="post-rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ---------------- Write ---------------- -->
+  <section id="pane-write" hidden>
+    <div class="card">
+      <h2 id="write-heading">New article</h2>
+      <p class="note">Saved to <code>src/content/blog/</code>. Build afterwards to see it live.</p>
+
+      <label>
+        <span class="lab">Title</span>
+        <input type="text" id="f-title" placeholder="How to Compress a PDF Under 1 MB">
+        <span class="help" id="slug-hint">URL: /blog/…</span>
+      </label>
+
+      <label>
+        <span class="lab">Description</span>
+        <textarea id="f-description" style="min-height:60px"
+          placeholder="One or two sentences answering the search directly. 120-160 characters."></textarea>
+        <span class="help" id="desc-count">0 characters</span>
+      </label>
+
+      <label>
+        <span class="lab">Keywords</span>
+        <input type="text" id="f-keywords" placeholder="compress pdf, reduce pdf size">
+        <span class="help">Comma separated. The phrases people actually type.</span>
+      </label>
+
+      <div class="row" style="gap:1rem">
+        <label style="flex:1">
+          <span class="lab">Date</span>
+          <input type="date" id="f-date">
+        </label>
+        <label style="flex:1">
+          <span class="lab">Draft</span>
+          <span style="display:flex;align-items:center;gap:.4rem;padding-top:.4rem">
+            <input type="checkbox" id="f-draft"> <span class="help" style="margin:0">Exclude from the build</span>
+          </span>
+        </label>
+      </div>
+
+      <label>
+        <span class="lab">Related tools</span>
+        <div class="chips" id="f-related"></div>
+        <span class="help">Shown at the foot of the article. Pick two or three.</span>
+      </label>
+
+      <label>
+        <span class="lab">Body (HTML)</span>
+        <textarea id="f-body" class="prose" placeholder="&lt;p&gt;&lt;strong&gt;Answer the question in the first sentence.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h2&gt;A real section&lt;/h2&gt;
+&lt;p&gt;Write from something you checked.&lt;/p&gt;"></textarea>
+        <span class="help" id="body-count">0 words · use &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;ol class="steps"&gt;, &lt;div class="note"&gt;, &lt;div class="table-scroll"&gt;</span>
+      </label>
+
+      <h2 style="font-size:.95rem;margin:1.4rem 0 .3rem">FAQs</h2>
+      <p class="note">Four is the standard here. They are emitted as FAQ
+      structured data, so each answer must stand on its own.</p>
+      <div id="f-faqs"></div>
+      <button class="btn sec" id="add-faq" type="button">Add FAQ</button>
+
+      <div class="row" style="margin-top:1.4rem">
+        <button class="btn" id="save-post">Save article</button>
+        <button class="btn sec" id="save-build">Save and build</button>
+        <button class="btn sec" id="clear-form">Clear</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------- Settings ---------------- -->
+  <section id="pane-settings" hidden>
+    <div id="settings-groups"></div>
+    <div class="row">
+      <button class="btn" id="save-settings">Save settings</button>
+      <button class="btn sec" id="save-settings-build">Save and build</button>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const $ = sel => document.querySelector(sel);
+const el = (tag, props = {}, kids = []) => {
+  const node = Object.assign(document.createElement(tag), props);
+  for (const k of [].concat(kids)) node.append(k);
+  return node;
+};
+
+let TOOLS = [];
+let editingSlug = null;
+
+/* ---------------- status ---------------- */
+
+let statusTimer;
+function say(message, kind = "ok", sticky = false) {
+  const bar = $("#status");
+  bar.textContent = message;
+  bar.className = `status show ${kind}`;
+  clearTimeout(statusTimer);
+  if (!sticky) statusTimer = setTimeout(() => bar.classList.remove("show"), 4000);
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(`/api/${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...options
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+
+/* ---------------- tabs ---------------- */
+
+const TABS = ["dash", "posts", "write", "settings"];
+for (const name of TABS) {
+  $(`#tab-${name}`).addEventListener("click", () => show(name));
+}
+function show(name) {
+  for (const other of TABS) {
+    $(`#tab-${other}`).setAttribute("aria-selected", String(other === name));
+    $(`#pane-${other}`).hidden = other !== name;
+  }
+  if (name === "dash") loadStatus();
+  if (name === "posts") loadPosts();
+}
+
+/* ---------------- dashboard ---------------- */
+
+async function loadStatus() {
+  try {
+    const s = await api("status");
+    $("#site-badge").textContent = s.siteUrl;
+
+    const adCount = s.adsConfigured.length;
+    const stats = [
+      ["Articles", s.posts, ""],
+      ["Tools", s.tools, ""],
+      ["Ad units", `${adCount}/3`, adCount ? s.adsConfigured.join(", ") : "none configured"],
+      ["ads.txt", s.adsTxtSet ? "set" : "placeholder", s.adsTxtSet ? "" : "add it after approval"],
+      ["dist/", s.distBuilt ? "built" : "missing", s.distBuilt ? "" : "run a build"]
+    ];
+
+    $("#stats").replaceChildren(...stats.map(([label, value, sub]) =>
+      el("div", { className: "stat" }, [
+        el("b", { textContent: String(value) }),
+        el("span", { textContent: sub ? `${label} — ${sub}` : label })
+      ])
+    ));
+  } catch (err) {
+    say(err.message, "err");
+  }
+}
+
+async function runTask(script, button) {
+  const log = $("#log");
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = "Running…";
+  log.hidden = false;
+  log.textContent = "Working…";
+
+  try {
+    const result = await api(script, { method: "POST" });
+    log.textContent = result.output || "(no output)";
+    say(result.ok ? `${script} finished` : `${script} failed`, result.ok ? "ok" : "err");
+    if (script === "build") loadStatus();
+  } catch (err) {
+    log.textContent = err.message;
+    say(err.message, "err");
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+
+$("#do-build").addEventListener("click", e => runTask("build", e.target));
+$("#do-test").addEventListener("click", e => runTask("test", e.target));
+
+/* ---------------- posts list ---------------- */
+
+async function loadPosts() {
+  try {
+    const { posts, tools } = await api("posts");
+    TOOLS = tools;
+
+    $("#posts-count").textContent =
+      `${posts.length} article${posts.length === 1 ? "" : "s"}. The plan is one a week.`;
+
+    $("#post-rows").replaceChildren(...posts.map(post => {
+      const title = el("div", {}, [
+        el("div", { className: "t", textContent: post.title }),
+        el("div", { className: "s", textContent: `/blog/${post.slug}.html` })
+      ]);
+      if (post.draft) title.append(" ", el("span", { className: "pill draft", textContent: "draft" }));
+
+      const edit = el("button", { className: "btn sec", textContent: "Edit" });
+      edit.addEventListener("click", () => editPost(post.slug));
+
+      const del = el("button", { className: "btn danger", textContent: "Delete" });
+      del.addEventListener("click", async () => {
+        if (!confirm(`Delete "${post.title}"? This removes the file.`)) return;
+        try {
+          await api(`post?slug=${encodeURIComponent(post.slug)}`, { method: "DELETE" });
+          say("Deleted. Build to update the site.");
+          loadPosts();
+        } catch (err) { say(err.message, "err"); }
+      });
+
+      return el("tr", {}, [
+        el("td", {}, title),
+        el("td", { textContent: post.date || "—" }),
+        el("td", { textContent: String(post.words || 0) }),
+        el("td", { textContent: String(post.faqs || 0) }),
+        el("td", {}, el("div", { className: "row" }, [edit, del]))
+      ]);
+    }));
+  } catch (err) {
+    say(err.message, "err");
+  }
+}
+
+/* ---------------- write ---------------- */
+
+function relatedChips(selected = []) {
+  $("#f-related").replaceChildren(...TOOLS.map(slug => {
+    const input = el("input", { type: "checkbox", value: slug, checked: selected.includes(slug) });
+    return el("label", {}, [input, el("span", { textContent: slug })]);
+  }));
+}
+
+function faqBlock(q = "", a = "") {
+  const wrap = el("div", { className: "faq" });
+  const remove = el("button", { className: "btn danger", type: "button", textContent: "Remove" });
+  remove.addEventListener("click", () => wrap.remove());
+
+  wrap.append(
+    el("div", { className: "row" }, [el("strong", { textContent: "FAQ" }), remove]),
+    el("input", { type: "text", className: "faq-q", value: q, placeholder: "Question?" }),
+    el("div", { style: "height:.4rem" }),
+    el("textarea", { className: "faq-a", value: a, placeholder: "Answer. Plain text is fine — it gets wrapped in a paragraph.", style: "min-height:66px" })
+  );
+  return wrap;
+}
+
+$("#add-faq").addEventListener("click", () => $("#f-faqs").append(faqBlock()));
+
+$("#f-title").addEventListener("input", e => {
+  const slug = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 70);
+  $("#slug-hint").textContent = slug ? `URL: /blog/${slug}.html` : "URL: /blog/…";
+});
+
+$("#f-description").addEventListener("input", e => {
+  const n = e.target.value.length;
+  const note = n === 0 ? "" : n < 50 ? " — too short" : n > 160 ? " — may be truncated in search results" : " — good";
+  $("#desc-count").textContent = `${n} characters${note}`;
+});
+
+$("#f-body").addEventListener("input", e => {
+  const words = e.target.value.replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
+  $("#body-count").textContent = `${words} words · about ${Math.max(1, Math.round(words / 200))} min read`;
+});
+
+function collectPost() {
+  const faqs = [...document.querySelectorAll("#f-faqs .faq")].map(node => ({
+    q: node.querySelector(".faq-q").value,
+    a: node.querySelector(".faq-a").value
+  })).filter(f => f.q.trim() && f.a.trim());
+
+  return {
+    title: $("#f-title").value,
+    slug: editingSlug || $("#f-title").value,
+    description: $("#f-description").value,
+    keywords: $("#f-keywords").value,
+    date: $("#f-date").value,
+    draft: $("#f-draft").checked,
+    related: [...document.querySelectorAll("#f-related input:checked")].map(i => i.value),
+    body: $("#f-body").value,
+    faqs,
+    overwrite: Boolean(editingSlug)
+  };
+}
+
+function clearForm() {
+  editingSlug = null;
+  $("#write-heading").textContent = "New article";
+  for (const id of ["f-title", "f-description", "f-keywords", "f-body"]) $(`#${id}`).value = "";
+  $("#f-date").value = new Date().toISOString().slice(0, 10);
+  $("#f-draft").checked = false;
+  $("#slug-hint").textContent = "URL: /blog/…";
+  $("#desc-count").textContent = "0 characters";
+  $("#body-count").textContent = "0 words";
+  relatedChips([]);
+  $("#f-faqs").replaceChildren(faqBlock(), faqBlock(), faqBlock(), faqBlock());
+}
+
+$("#clear-form").addEventListener("click", clearForm);
+
+async function editPost(slug) {
+  try {
+    const { post } = await api(`post?slug=${encodeURIComponent(slug)}`);
+    editingSlug = post.slug;
+    $("#write-heading").textContent = `Editing: ${post.title}`;
+    $("#f-title").value = post.title || "";
+    $("#f-description").value = post.description || "";
+    $("#f-keywords").value = post.keywords || "";
+    $("#f-date").value = post.date || "";
+    $("#f-draft").checked = Boolean(post.draft);
+    $("#f-body").value = (post.body || "").trim();
+    relatedChips(post.related || []);
+
+    const faqs = post.faqs || [];
+    $("#f-faqs").replaceChildren(...(faqs.length ? faqs : [{}, {}, {}, {}]).map(f =>
+      faqBlock(f.q || "", (f.a || "").replace(/^<p>([\s\S]*)<\/p>$/, "$1"))
+    ));
+
+    $("#f-description").dispatchEvent(new Event("input"));
+    $("#f-body").dispatchEvent(new Event("input"));
+    $("#slug-hint").textContent = `URL: /blog/${post.slug}.html`;
+    show("write");
+  } catch (err) {
+    say(err.message, "err");
+  }
+}
+
+async function savePost(thenBuild) {
+  const payload = collectPost();
+
+  if (!payload.title.trim()) return say("A title is required.", "err");
+  if (!payload.body.trim()) return say("The body is empty.", "err");
+  if (payload.faqs.length < 4) {
+    if (!confirm(`Only ${payload.faqs.length} FAQs. Every other page here has four. Save anyway?`)) return;
+  }
+
+  try {
+    const result = await api("post", { method: "POST", body: JSON.stringify(payload) });
+    editingSlug = result.slug;
+    $("#write-heading").textContent = `Editing: ${payload.title}`;
+    say(`${result.updated ? "Updated" : "Created"} ${result.file}`);
+    if (thenBuild) {
+      show("dash");
+      runTask("build", $("#do-build"));
+    }
+  } catch (err) {
+    if (/already exists/.test(err.message) &&
+        confirm(`${err.message}\n\nOverwrite it?`)) {
+      payload.overwrite = true;
+      try {
+        const result = await api("post", { method: "POST", body: JSON.stringify(payload) });
+        editingSlug = result.slug;
+        say(`Updated ${result.file}`);
+      } catch (e2) { say(e2.message, "err"); }
+    } else {
+      say(err.message, "err");
+    }
+  }
+}
+
+$("#save-post").addEventListener("click", () => savePost(false));
+$("#save-build").addEventListener("click", () => savePost(true));
+
+/* ---------------- settings ---------------- */
+
+async function loadSettings() {
+  try {
+    const { schema, values, fromEnvironment } = await api("settings");
+
+    $("#settings-groups").replaceChildren(...schema.map(group => {
+      const card = el("div", { className: "card" }, el("h2", { textContent: group.group }));
+      if (group.note) card.append(el("p", { className: "note", textContent: group.note }));
+
+      for (const field of group.fields) {
+        const locked = fromEnvironment.includes(field.key);
+        const input = field.type === "textarea"
+          ? el("textarea", { id: `set-${field.key}`, value: values[field.key] || "" })
+          : el("input", { type: "text", id: `set-${field.key}`, value: values[field.key] || "" });
+
+        if (field.placeholder) input.placeholder = field.placeholder;
+        if (locked) { input.disabled = true; input.classList.add("locked"); }
+
+        const help = locked
+          ? "Set in the shell environment, which takes priority. Unset it there to edit here."
+          : field.help || "";
+
+        card.append(el("label", {}, [
+          el("span", { className: "lab", textContent: field.label + (field.secret ? " · secret" : "") }),
+          input,
+          help ? el("span", { className: "help", textContent: help }) : ""
+        ]));
+      }
+      return card;
+    }));
+  } catch (err) {
+    say(err.message, "err");
+  }
+}
+
+async function saveSettings(thenBuild) {
+  const payload = {};
+  for (const node of document.querySelectorAll("[id^=set-]")) {
+    if (node.disabled) continue;
+    payload[node.id.replace(/^set-/, "")] = node.value;
+  }
+
+  try {
+    await api("settings", { method: "POST", body: JSON.stringify(payload) });
+    say("Saved to .env — gitignored, so it stays on this machine.");
+    loadStatus();
+    if (thenBuild) { show("dash"); runTask("build", $("#do-build")); }
+  } catch (err) {
+    say(err.message, "err");
+  }
+}
+
+$("#save-settings").addEventListener("click", () => saveSettings(false));
+$("#save-settings-build").addEventListener("click", () => saveSettings(true));
+
+/* ---------------- init ---------------- */
+
+(async function init() {
+  await loadStatus();
+  const { tools } = await api("posts");
+  TOOLS = tools;
+  clearForm();
+  loadSettings();
+})();
+</script>
+</body>
+</html>

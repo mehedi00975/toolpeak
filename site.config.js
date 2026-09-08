@@ -6,6 +6,11 @@
  * Set them in Cloudflare Pages → Settings → Environment variables.
  */
 
+// Load .env first, so values saved from the admin panel reach the build.
+// Real environment variables are never overwritten, which keeps Cloudflare
+// Pages and GitHub Actions behaving exactly as before.
+require("./src/lib/env.js").load();
+
 const env = process.env;
 
 /** Read an env var, trimming stray quotes people paste in by accident. */

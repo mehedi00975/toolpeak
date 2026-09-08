@@ -7,6 +7,7 @@ from Cloudflare Pages.
 ```
 npm install     # devDependencies only; the site itself ships zero dependencies
 npm run dev     # build, then serve on http://localhost:8080
+npm run admin   # admin panel on http://localhost:8081 — settings and articles
 npm run check   # build + the full test suite (this is the gate before deploying)
 ```
 
@@ -41,6 +42,8 @@ src/
   pages/legal.js       about, contact, privacy policy, terms
   content/blog/        one module per article
 scripts/
+  admin.js             local admin panel: settings and article editor
+  admin-ui.html        the panel's interface
   new-post.js          scaffolds a blog post
   serve.js             static file server for local preview
 tests/                 the test suite (see below)
@@ -108,7 +111,7 @@ becoming usable.
 ## Tests
 
 ```
-npm test        # 258 tests, ~60 seconds
+npm test        # 282 tests, ~60 seconds
 ```
 
 | Suite | Covers |
@@ -123,6 +126,7 @@ npm test        # 258 tests, ~60 seconds
 | `config.test.js` | env documentation, no committed secrets, scripts |
 | `ad-integration.test.js` | Adsterra snippet shapes, layout stability, ads.txt |
 | `deploy.test.js` | works on GitHub Pages and Cloudflare without rewrites |
+| `admin.test.js` | the admin panel's file writing, escaping and localhost binding |
 
 Two things are worth knowing about the suite.
 
@@ -196,7 +200,38 @@ configuration.
 
 ---
 
+## The admin panel
+
+```
+npm run admin        # http://localhost:8081
+```
+
+A local control panel for the two jobs that otherwise mean editing files by
+hand: pasting ad codes, and writing articles. It has four tabs — a dashboard,
+the article list, a writing view, and settings — plus buttons to rebuild the
+site and run the tests.
+
+**It is a development tool and must never be deployed.** There is no login, it
+writes files, and it can run builds. It binds to `127.0.0.1` for that reason,
+and a test enforces the default. Nothing under `scripts/` is ever copied into
+`dist/`, so it cannot leak into a deploy by accident.
+
+Settings are written to `.env`, which is git-ignored. The precedence is:
+
+```
+real environment variable  >  .env  >  default in site.config.js
+```
+
+A real environment variable always wins, so a local `.env` cannot change what
+Cloudflare Pages or GitHub Actions build. **`.env` only configures your own
+machine.** For the live site the same values have to be set again in the host's
+dashboard — the panel says so on every settings field.
+
+---
+
 ## Publishing an article
+
+Either use the **Write** tab in the admin panel, or scaffold from the terminal:
 
 ```
 npm run new-post -- "How to Compress a PDF Under 1 MB" --tools image-compressor
