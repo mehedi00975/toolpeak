@@ -72,6 +72,21 @@ textarea.prose { font-family: inherit; font-size: .92rem; min-height: 340px; }
 .status.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .7rem; }
+/* Snippet feedback. Colour alone is not the signal — each message is prefixed
+   in words, so it still reads correctly in monochrome or with low vision. */
+.report { display: grid; gap: .4rem; }
+.report:empty { display: none; }
+.msg {
+  font-size: .82rem; line-height: 1.45; margin: .45rem 0 0;
+  padding: .5rem .65rem; border-radius: 8px; border-left: 3px solid;
+}
+.msg.ok { background: #ecfdf5; border-color: var(--ok); color: #065f46; }
+.msg.warn { background: #fffbeb; border-color: var(--warn); color: #92400e; }
+.msg.err { background: #fef2f2; border-color: var(--bad); color: #991b1b; }
+.msg.note-msg { background: var(--bg); border-color: var(--line); color: var(--muted); }
+.btn.small { font-size: .78rem; padding: .3rem .6rem; margin-top: .5rem; }
+#ads-fields textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; }
+
 .stat { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: .7rem .8rem; }
 .stat b { display: block; font-size: 1.3rem; }
 .stat span { color: var(--muted); font-size: .78rem; }
@@ -106,6 +121,7 @@ pre.log {
   <span class="badge" id="site-badge">—</span>
   <nav>
     <button id="tab-dash" aria-selected="true">Dashboard</button>
+    <button id="tab-ads" aria-selected="false">Ads</button>
     <button id="tab-posts" aria-selected="false">Posts</button>
     <button id="tab-write" aria-selected="false">Write</button>
     <button id="tab-settings" aria-selected="false">Settings</button>
@@ -131,6 +147,66 @@ pre.log {
         <button class="btn sec" id="do-test">Run tests</button>
       </div>
       <pre class="log" id="log" hidden></pre>
+    </div>
+  </section>
+
+  <!-- ---------------- Ads ---------------- -->
+  <section id="pane-ads" hidden>
+    <div class="card">
+      <h2>Adsterra ad code</h2>
+      <p class="note">
+        Paste each unit's code from <strong>Adsterra → Websites → your site →
+        Get code</strong>, exactly as shown, script tags included. Each box is
+        checked as you paste. Leave a box empty to run without that unit.
+      </p>
+      <p class="note">
+        The house limit is one popunder, one Social Bar and one banner — three
+        units, no more. That ceiling is enforced by the site's tests, not just
+        by this screen.
+      </p>
+    </div>
+
+    <div class="card" id="ads-fields"></div>
+
+    <div class="card">
+      <h2>ads.txt</h2>
+      <p class="note">
+        One line, from <strong>Adsterra → Websites → ads.txt</strong>. Served at
+        <code>/ads.txt</code>. Without it, advertisers that verify ownership
+        will not bid, and nothing on the site looks broken while that happens.
+      </p>
+      <label>
+        <span class="lab">ads.txt record</span>
+        <textarea id="ads-txt" rows="2" placeholder="adsterra.com, 1234567, DIRECT"></textarea>
+        <span class="help" id="ads-txt-help"></span>
+      </label>
+      <div id="ads-txt-report"></div>
+    </div>
+
+    <div class="card">
+      <h2>Save</h2>
+      <p class="note">
+        Saved to <code>.env</code>, which is gitignored and stays on this
+        machine. <strong>The live site does not read it.</strong> For the real
+        site, put the same values in Cloudflare Pages → Settings → Environment
+        variables, or in GitHub → Settings → Secrets.
+      </p>
+      <div class="row">
+        <button class="btn" id="save-ads">Save ad code</button>
+        <button class="btn sec" id="save-ads-build">Save and rebuild</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>What the built site serves</h2>
+      <p class="note">
+        Read from <code>dist/</code>, not from the boxes above — this is what a
+        visitor would actually get.
+      </p>
+      <div id="ads-verify"></div>
+      <div class="row">
+        <button class="btn sec" id="do-verify">Re-check</button>
+      </div>
     </div>
   </section>
 
@@ -233,6 +309,15 @@ const el = (tag, props = {}, kids = []) => {
   return node;
 };
 
+/** Waits for typing to pause, so checking a snippet does not fire per keystroke. */
+const debounce = (fn, ms) => {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+};
+
 let TOOLS = [];
 let editingSlug = null;
 
@@ -259,7 +344,7 @@ async function api(path, options = {}) {
 
 /* ---------------- tabs ---------------- */
 
-const TABS = ["dash", "posts", "write", "settings"];
+const TABS = ["dash", "ads", "posts", "write", "settings"];
 for (const name of TABS) {
   $(`#tab-${name}`).addEventListener("click", () => show(name));
 }
@@ -270,6 +355,7 @@ function show(name) {
   }
   if (name === "dash") loadStatus();
   if (name === "posts") loadPosts();
+  if (name === "ads") loadAds();
 }
 
 /* ---------------- dashboard ---------------- */
@@ -506,13 +592,239 @@ async function savePost(thenBuild) {
 $("#save-post").addEventListener("click", () => savePost(false));
 $("#save-build").addEventListener("click", () => savePost(true));
 
+/* ---------------- ads ---------------- */
+
+const AD_UNITS = [
+  {
+    key: "ADS_POPUNDER", unit: "popunder", label: "Popunder",
+    hint: "Opens one ad in a background tab on the first click. Takes no space " +
+          "on the page. Usually a single script tag."
+  },
+  {
+    key: "ADS_SOCIAL_BAR", unit: "socialBar", label: "Social Bar",
+    hint: "The mobile unit — a small floating bar. Also a single script tag, " +
+          "which is why it is easy to confuse with the popunder."
+  },
+  {
+    key: "ADS_BANNER", unit: "banner", label: "Banner",
+    hint: "One in-content banner. Two parts: an atOptions block and an " +
+          "invoke.js tag. 728x90 for desktop, 320x50 for mobile."
+  }
+];
+
+let adsLocked = [];
+
+function reportList(report) {
+  const box = el("div", { className: "report" });
+
+  for (const msg of report.errors || []) {
+    box.append(el("p", { className: "msg err", textContent: "Problem: " + msg }));
+  }
+  for (const msg of report.warnings || []) {
+    box.append(el("p", { className: "msg warn", textContent: "Fixed: " + msg }));
+  }
+  for (const msg of report.notes || []) {
+    box.append(el("p", { className: "msg note-msg", textContent: msg }));
+  }
+  return box;
+}
+
+/** Describes what was recognized, so a correct paste gets confirmation too. */
+function recognizedLine(report) {
+  if (report.empty) return null;
+  const bits = [];
+  if (report.keys && report.keys.length) bits.push("key " + report.keys[0].slice(0, 12) + "…");
+  if (report.size) bits.push(report.size.width + "x" + report.size.height);
+  if (report.hosts && report.hosts.length) bits.push(report.hosts[0]);
+  return bits.length ? "Recognized: " + bits.join(" · ") : null;
+}
+
+async function checkAds() {
+  const payload = {};
+  for (const { key } of AD_UNITS) {
+    const node = $("#ad-" + key);
+    if (node && !node.disabled) payload[key] = node.value;
+  }
+  payload.ADS_TXT = $("#ads-txt").disabled ? "" : $("#ads-txt").value;
+
+  let report;
+  try {
+    report = await api("ads/check", { method: "POST", body: JSON.stringify(payload) });
+  } catch (err) {
+    say(err.message, "err");
+    return null;
+  }
+
+  for (const { key, unit } of AD_UNITS) {
+    const target = $("#report-" + key);
+    if (!target) continue;
+
+    const per = report.per[unit];
+    target.replaceChildren();
+
+    const ok = recognizedLine(per);
+    if (ok && !per.errors.length) {
+      target.append(el("p", { className: "msg ok", textContent: ok }));
+    }
+    target.append(reportList(per));
+
+    // Offer the safe rewrite rather than applying it behind the user's back.
+    if (per.rewritten) {
+      const apply = el("button", { className: "btn sec small", textContent: "Use the safe version" });
+      apply.addEventListener("click", () => {
+        $("#ad-" + key).value = per.rewritten;
+        checkAds();
+      });
+      target.append(apply);
+    }
+  }
+
+  const shared = $("#ads-shared");
+  if (shared) {
+    shared.replaceChildren(
+      ...(report.shared || []).map(m => el("p", { className: "msg err", textContent: m }))
+    );
+  }
+
+  const txt = $("#ads-txt-report");
+  txt.replaceChildren(reportList(report.adsTxt));
+
+  return report;
+}
+
+async function loadAds() {
+  try {
+    const { values, fromEnvironment } = await api("settings");
+    adsLocked = fromEnvironment;
+
+    $("#ads-fields").replaceChildren(
+      el("h2", { textContent: "Ad units" }),
+      ...AD_UNITS.flatMap(({ key, label, hint }) => {
+        const locked = fromEnvironment.includes(key);
+        const box = el("textarea", { id: "ad-" + key, rows: 5, value: values[key] || "" });
+        // The closing tag below is escaped. An HTML parser ends an inline
+        // script at the first literal closing tag it sees, even inside a
+        // string or a comment, which truncates everything after it.
+        box.placeholder = "<script>…<\/script>";
+        if (locked) { box.disabled = true; box.classList.add("locked"); }
+        else box.addEventListener("input", debounce(checkAds, 400));
+
+        return [
+          el("label", {}, [
+            el("span", { className: "lab", textContent: label }),
+            el("span", { className: "help", textContent: locked
+              ? "Set in the shell environment, which wins over this file. Unset it there to edit here."
+              : hint }),
+            box
+          ]),
+          el("div", { id: "report-" + key })
+        ];
+      }),
+      el("div", { id: "ads-shared" })
+    );
+
+    const txt = $("#ads-txt");
+    txt.value = values.ADS_TXT || "";
+    if (fromEnvironment.includes("ADS_TXT")) {
+      txt.disabled = true;
+      txt.classList.add("locked");
+      $("#ads-txt-help").textContent = "Set in the shell environment.";
+    } else {
+      txt.oninput = debounce(checkAds, 400);
+    }
+
+    await checkAds();
+    await verifyAds();
+  } catch (err) {
+    say(err.message, "err");
+  }
+}
+
+async function verifyAds() {
+  const target = $("#ads-verify");
+  try {
+    const v = await api("ads/verify");
+    target.replaceChildren();
+
+    if (!v.built) {
+      target.append(el("p", { className: "msg warn", textContent: v.reason }));
+      return;
+    }
+
+    const rows = [
+      ["Popunder", v.units.popunder],
+      ["Social Bar", v.units.socialBar],
+      ["Banner", v.units.banner],
+      ["Banner slot on the page", v.bannerSlot],
+      ["ads.txt record", v.adsTxt.present]
+    ];
+
+    target.append(el("div", { className: "grid" }, rows.map(([label, on]) =>
+      el("div", { className: "stat" }, [
+        el("b", { textContent: on ? "yes" : "no" }),
+        el("span", { textContent: label })
+      ])
+    )));
+
+    for (const problem of v.problems) {
+      target.append(el("p", { className: "msg warn", textContent: problem }));
+    }
+    if (!v.problems.length) {
+      const live = ["popunder", "socialBar", "banner"].filter(u => v.units[u]).length;
+      target.append(el("p", { className: "msg ok", textContent: live
+        ? `The built pages carry ${live} ad unit${live > 1 ? "s" : ""}, loaded only after a visitor accepts cookies.`
+        : "No ad code is built in yet. The site works fine without it." }));
+    }
+  } catch (err) {
+    target.replaceChildren(el("p", { className: "msg err", textContent: err.message }));
+  }
+}
+
+async function saveAds(thenBuild) {
+  const report = await checkAds();
+  if (report && report.errors > 0) {
+    say("Fix the problems above first — saving would break the live site.", "err");
+    return;
+  }
+
+  const payload = {};
+  for (const { key } of AD_UNITS) {
+    const node = $("#ad-" + key);
+    if (node && !node.disabled) payload[key] = node.value.trim();
+  }
+  if (!$("#ads-txt").disabled) payload.ADS_TXT = $("#ads-txt").value.trim();
+
+  try {
+    await api("settings", { method: "POST", body: JSON.stringify(payload) });
+    say("Saved to .env. Remember to set the same values on your host for the live site.");
+    loadStatus();
+    if (thenBuild) {
+      await runTask("build", $("#save-ads-build"));
+      await verifyAds();
+    } else {
+      verifyAds();
+    }
+  } catch (err) {
+    say(err.message, "err");
+  }
+}
+
+$("#save-ads").addEventListener("click", () => saveAds(false));
+$("#save-ads-build").addEventListener("click", () => saveAds(true));
+$("#do-verify").addEventListener("click", verifyAds);
+
 /* ---------------- settings ---------------- */
 
 async function loadSettings() {
   try {
     const { schema, values, fromEnvironment } = await api("settings");
 
-    $("#settings-groups").replaceChildren(...schema.map(group => {
+    // The Adsterra group has its own tab, with snippet checking. Showing the
+    // same fields twice would mean two places to edit and one of them silently
+    // stale.
+    const groups = schema.filter(group => group.group !== "Adsterra");
+
+    $("#settings-groups").replaceChildren(...groups.map(group => {
       const card = el("div", { className: "card" }, el("h2", { textContent: group.group }));
       if (group.note) card.append(el("p", { className: "note", textContent: group.note }));
 

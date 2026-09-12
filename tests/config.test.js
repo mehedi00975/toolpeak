@@ -60,7 +60,21 @@ test("config: .env.example carries no real secrets", () => {
 });
 
 test("config: ad snippets are never hard-coded in tracked source", () => {
-  const suspicious = /highperformanceformat\.com|profitableratecpm|\/\/[a-z0-9]+\.adsterra\.com/i;
+  // What leaks an account is a real ad tag: a serving URL carrying a publisher
+  // key, or an atOptions block with one. A bare hostname is not that — the
+  // snippet checker in src/lib/adsnippet.js has to name these domains in order
+  // to recognize them, and a rule that banned the word would ban the defense
+  // along with the problem.
+  const suspicious = new RegExp(
+    [
+      // A serving URL with a key in it.
+      "//[a-z0-9.-]*(highperformanceformat|profitableratecpm|topcreativeformat|" +
+        "effectivecreativeformat|profitabledisplay\\w*)\\.com/[a-f0-9]{12,}",
+      // An atOptions block with a key that is not an obvious placeholder.
+      "atOptions[\\s\\S]{0,80}['\"]key['\"]\\s*:\\s*['\"][a-f0-9]{16,}"
+    ].join("|"),
+    "i"
+  );
   const roots = ["site.config.js", "build.js", "src"];
 
   const walk = rel => {

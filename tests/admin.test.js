@@ -371,6 +371,110 @@ test("admin: loads a post for editing and deletes it", async () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * Ad checking through the API
+ * ------------------------------------------------------------------ */
+
+test("admin: checks a snippet without saving it", async () => {
+  const panel = await startPanel();
+  try {
+    const legacy = `<script type="text/javascript">
+atOptions = {'key':'5f51499447a3ee41e0dd09f11ce139c7','format':'iframe','height':90,'width':728,'params':{}};
+document.write('<scr' + 'ipt src="http' + (location.protocol === 'https:' ? 's' : '') + '://www.highperformanceformat.com/5f51499447a3ee41e0dd09f11ce139c7/invoke.js"></scr' + 'ipt>');
+</script>`;
+
+    const { status, data } = await panel.post("ads/check", { ADS_BANNER: legacy });
+    assert.strictEqual(status, 200);
+
+    const banner = data.per.banner;
+    assert.ok(banner.rewritten, "the safe rewrite should be offered");
+    assert.ok(banner.warnings.some(w => /document\.write/.test(w)));
+
+    // Checking must not write anything.
+    assert.ok(!fs.existsSync(path.join(panel.sandbox, ".env")),
+      "checking a snippet should not save it");
+  } finally {
+    panel.stop();
+  }
+});
+
+test("admin: reports the ads.txt line alongside the snippets", async () => {
+  const panel = await startPanel();
+  try {
+    const { data } = await panel.post("ads/check", { ADS_TXT: "adsterra.com 123 DIRECT" });
+    assert.ok(data.adsTxt.errors.length > 0, "a malformed record should be caught");
+  } finally {
+    panel.stop();
+  }
+});
+
+test("admin: verify reports nothing built before a build runs", async () => {
+  const panel = await startPanel();
+  try {
+    // The sandbox has no dist/.
+    const { data } = await panel.get("ads/verify");
+    assert.strictEqual(data.built, false);
+    assert.match(data.reason, /No build yet/);
+  } finally {
+    panel.stop();
+  }
+});
+
+test("admin: verify reads the ad payload out of a built page", async () => {
+  const panel = await startPanel();
+  try {
+    // A page whose payload contains braces inside the snippet values — the
+    // shape that defeats a naive regex and made this report a false negative.
+    const dist = path.join(panel.sandbox, "dist", "tools");
+    fs.mkdirSync(dist, { recursive: true });
+    fs.writeFileSync(path.join(panel.sandbox, "dist", "index.html"), "<html></html>");
+
+    const payload = JSON.stringify({
+      popunder: "",
+      socialBar: "",
+      banner: `<script>atOptions = {'key':'k','params':{}};</script>`
+    });
+    fs.writeFileSync(
+      path.join(dist, "word-counter.html"),
+      `<html><body><div class="adslot" data-ad="banner"></div>
+       <script>window.__TP_ADS=${payload};</script></body></html>`
+    );
+    fs.writeFileSync(path.join(panel.sandbox, "dist", "ads.txt"), "adsterra.com, 1, DIRECT\n");
+
+    const { data } = await panel.get("ads/verify");
+
+    assert.strictEqual(data.built, true);
+    assert.strictEqual(data.units.banner, true, "the banner payload should be seen");
+    assert.strictEqual(data.units.popunder, false);
+    assert.strictEqual(data.bannerSlot, true);
+    assert.strictEqual(data.adsTxt.present, true);
+    assert.deepStrictEqual(data.problems, []);
+  } finally {
+    panel.stop();
+  }
+});
+
+test("admin: verify notices settings that have not been built yet", async () => {
+  const panel = await startPanel();
+  try {
+    const dist = path.join(panel.sandbox, "dist");
+    fs.mkdirSync(dist, { recursive: true });
+    fs.writeFileSync(path.join(dist, "index.html"),
+      `<html><body><script>window.__TP_ADS={"popunder":"","socialBar":"","banner":""};</script></body></html>`);
+
+    await panel.post("settings", {
+      ADS_POPUNDER: `<script src="//pl1.profitableratecpm.com/a.js"></script>`
+    });
+
+    const { data } = await panel.get("ads/verify");
+    assert.strictEqual(data.stale, true);
+    assert.ok(data.problems.some(p => /Rebuild/.test(p)),
+      "saving without rebuilding is the easiest way to think ads are live when they are not");
+  } finally {
+    panel.stop();
+  }
+});
+
+/* ------------------------------------------------------------------ *
  * The panel must never become part of the deployed site
  * ------------------------------------------------------------------ */
 
@@ -391,6 +495,63 @@ test("admin: the panel is not copied into the build output", () => {
   for (const file of files) {
     assert.ok(!/admin/i.test(file), `${file} should not be in the published site`);
   }
+});
+
+test("admin: the panel UI has no truncated inline script", () => {
+  // An HTML parser ends an inline script at the first literal closing tag it
+  // finds, even inside a string or a comment. Writing one while describing ad
+  // code silently cuts the rest of the panel's JavaScript off, and the page
+  // still loads — just half-dead. This broke the Ads tab once already.
+  const html = fs.readFileSync(path.join(ROOT, "scripts", "admin-ui.html"), "utf8");
+
+  const open = html.indexOf("<script>");
+  const close = html.indexOf("</script>", open);
+
+  assert.ok(open !== -1, "the panel should have an inline script");
+  assert.ok(
+    close > html.length - 200,
+    "the inline script is cut short — something before offset " + close +
+    " contains a literal closing script tag that should be escaped"
+  );
+});
+
+test("admin: the panel UI parses and boots without errors", async () => {
+  const { JSDOM, VirtualConsole } = require("jsdom");
+  const html = fs.readFileSync(path.join(ROOT, "scripts", "admin-ui.html"), "utf8");
+
+  const errors = [];
+  const vc = new VirtualConsole();
+  vc.on("jsdomError", e => errors.push(e.message));
+
+  const dom = new JSDOM(html, {
+    runScripts: "dangerously",
+    url: "http://localhost:8081/",
+    virtualConsole: vc,
+    beforeParse(w) {
+      // No server here: answer every call with an empty but well-shaped body.
+      w.fetch = async url => {
+        const route = String(url).replace("/api/", "");
+        const reply = data => ({ ok: true, json: async () => data });
+        if (route === "status") {
+          return reply({ posts: 0, tools: 0, adsConfigured: [], adsTxtSet: false, siteUrl: "", distBuilt: false });
+        }
+        if (route === "posts") return reply({ posts: [], tools: [] });
+        if (route === "settings") return reply({ schema: [], values: {}, fromEnvironment: [] });
+        return reply({});
+      };
+    }
+  });
+
+  await new Promise(r => setTimeout(r, 400));
+
+  const document = dom.window.document;
+  for (const tab of ["dash", "ads", "posts", "write", "settings"]) {
+    assert.ok(document.querySelector(`#tab-${tab}`), `the ${tab} tab button should exist`);
+    assert.ok(document.querySelector(`#pane-${tab}`), `the ${tab} pane should exist`);
+  }
+
+  assert.deepStrictEqual(errors, [], "the panel should boot without script errors");
+  dom.window.close();
 });
 
 test("admin: binds to localhost by default", () => {

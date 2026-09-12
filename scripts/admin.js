@@ -27,6 +27,7 @@ const path = require("path");
 const { execFile } = require("child_process");
 
 const envLib = require("../src/lib/env.js");
+const adsnippet = require("../src/lib/adsnippet.js");
 
 const ROOT = path.join(__dirname, "..");
 const BLOG_DIR = path.join(ROOT, "src", "content", "blog");
@@ -144,6 +145,122 @@ function toolSlugs() {
     .filter(f => f.endsWith(".js"))
     .map(f => f.replace(/\.js$/, ""))
     .sort();
+}
+
+/**
+ * Reads the built site and reports what it would really serve.
+ *
+ * Saving a snippet and having it reach a visitor are different things: the
+ * build has to have run since, the page has to carry the ad payload, the
+ * banner page has to have a slot, and ads.txt has to hold a real record. Each
+ * of those can be wrong on its own while the settings screen looks perfect,
+ * and every one of them means zero revenue with no visible symptom.
+ */
+function verifyBuiltAds() {
+  const dist = path.join(ROOT, "dist");
+  const indexPath = path.join(dist, "index.html");
+
+  if (!fs.existsSync(indexPath)) {
+    return { built: false, reason: "No build yet. Rebuild the site to check." };
+  }
+
+  const sample = path.join(dist, "tools", "word-counter.html");
+  const page = fs.readFileSync(fs.existsSync(sample) ? sample : indexPath, "utf8");
+
+  const result = {
+    built: true,
+    builtAt: fs.statSync(indexPath).mtime.toISOString(),
+    stale: false,
+    units: { popunder: false, socialBar: false, banner: false },
+    bannerSlot: /data-ad=["']?banner/.test(page),
+    adsTxt: { present: false, valid: false, line: "" },
+    problems: []
+  };
+
+  // The ad payload the page carries, which is what consent.js reads.
+  //
+  // The values are ad snippets, so they contain braces of their own — a lazy
+  // regex stops at the first "};" inside an atOptions block and yields
+  // unparseable JSON. Find the opening brace and scan to its true partner,
+  // skipping anything inside a JSON string.
+  const marker = page.indexOf("window.__TP_ADS");
+  if (marker !== -1) {
+    const open = page.indexOf("{", marker);
+    let depth = 0;
+    let inString = false;
+    let end = -1;
+
+    for (let i = open; i < page.length; i++) {
+      const ch = page[i];
+
+      if (inString) {
+        if (ch === "\\") i++;
+        else if (ch === '"') inString = false;
+        continue;
+      }
+
+      if (ch === '"') inString = true;
+      else if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) { end = i; break; }
+      }
+    }
+
+    if (end !== -1) {
+      try {
+        const ads = JSON.parse(page.slice(open, end + 1));
+        for (const unit of ["popunder", "socialBar", "banner"]) {
+          result.units[unit] = Boolean((ads[unit] || "").trim());
+        }
+      } catch {
+        result.problems.push("The ad payload on the page is not readable JSON.");
+      }
+    }
+  }
+
+  // Settings that are set but have not been built yet.
+  const stored = envLib.read(ENV_FILE);
+  const pairs = [
+    ["ADS_POPUNDER", "popunder"],
+    ["ADS_SOCIAL_BAR", "socialBar"],
+    ["ADS_BANNER", "banner"]
+  ];
+  for (const [key, unit] of pairs) {
+    const configured = Boolean((stored[key] || process.env[key] || "").trim());
+    if (configured && !result.units[unit]) {
+      result.stale = true;
+      result.problems.push(
+        `${adsnippet.UNITS[unit]} is saved but is not in the built pages. ` +
+        "Rebuild the site."
+      );
+    }
+  }
+
+  if (result.units.banner && !result.bannerSlot) {
+    result.problems.push(
+      "Banner code is present but the page has no banner slot to put it in."
+    );
+  }
+
+  const adsTxtPath = path.join(dist, "ads.txt");
+  if (fs.existsSync(adsTxtPath)) {
+    const text = fs.readFileSync(adsTxtPath, "utf8");
+    const records = text.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith("#"));
+    result.adsTxt.present = records.length > 0;
+    result.adsTxt.line = records[0] || "";
+    result.adsTxt.valid = result.adsTxt.present &&
+      adsnippet.analyzeAdsTxt(records.join("\n")).errors.length === 0;
+
+    if (!result.adsTxt.present) {
+      result.problems.push(
+        "ads.txt is still the placeholder. Adsterra needs a real record there " +
+        "before advertisers will bid."
+      );
+    }
+  }
+
+  return result;
 }
 
 function listPosts() {
@@ -295,6 +412,32 @@ async function handleApi(req, res, url) {
 
     fs.writeFileSync(ENV_FILE, envLib.stringify(next, { header }));
     return json(res, 200, { saved: true, keys: Object.keys(next).length });
+  }
+
+  // --- ads ---
+
+  /**
+   * Checks ad snippets without saving them, so the panel can warn while the
+   * user is still looking at the box they pasted into.
+   */
+  if (route === "ads/check" && req.method === "POST") {
+    const body = await readBody(req);
+    const report = adsnippet.analyzeAll({
+      popunder: body.ADS_POPUNDER,
+      socialBar: body.ADS_SOCIAL_BAR,
+      banner: body.ADS_BANNER
+    });
+    report.adsTxt = adsnippet.analyzeAdsTxt(body.ADS_TXT);
+    return json(res, 200, report);
+  }
+
+  /**
+   * Reports what the built site would actually serve, by reading dist/ rather
+   * than the settings. Saving a snippet and having it appear on the pages are
+   * two different things, and only the second one earns anything.
+   */
+  if (route === "ads/verify" && req.method === "GET") {
+    return json(res, 200, verifyBuiltAds());
   }
 
   // --- posts ---

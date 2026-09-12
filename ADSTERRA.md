@@ -144,9 +144,13 @@ Review usually takes 1–2 business days.
 ### 3. After approval
 
 Create three ad units in the dashboard: **Popunder**, **Social Bar**, and one
-**Banner** (728×90, or 320×50 if you prefer mobile-first). Copy each snippet
-verbatim, including the `<script>` tags, into the Cloudflare environment
-variables:
+**Banner** (728×90, or 320×50 if you prefer mobile-first).
+
+The easiest way to handle the snippets is `npm run admin` → the **Ads** tab.
+It checks each one as you paste, tells you which unit it thinks the code is
+for, and shows what the built site would actually serve. Then copy the same
+values into the Cloudflare environment variables — the panel writes a local
+`.env`, which the live build does not read:
 
 ```
 ADS_POPUNDER     the Popunder snippet
@@ -154,6 +158,31 @@ ADS_SOCIAL_BAR   the Social Bar snippet
 ADS_BANNER       the Banner snippet
 ADS_TXT          the line from Websites → ads.txt
 ```
+
+#### If the banner code contains `document.write`
+
+Adsterra still hands out banner code in this older form:
+
+```
+document.write('<scr' + 'ipt src="http' + (...) + '://.../invoke.js"></scr' + 'ipt>');
+```
+
+Do not paste that as-is. Ads here load only after a visitor clicks Accept,
+which is always after the page has finished loading — and `document.write` on
+a finished page implicitly calls `document.open()`, which **erases the entire
+page**. The visitor sees a blank screen where the tool used to be.
+
+The admin panel detects this and offers a rewritten version that loads the
+same ad safely. If you are setting the variable by hand instead, convert it
+yourself: keep the `atOptions` block exactly as it is, delete the
+`document.write(...)` line, and add the script tag it was building:
+
+```html
+<script async src="//www.example-host.com/YOUR_KEY/invoke.js"></script>
+```
+
+Order matters — `atOptions` has to run before `invoke.js` reads it. Leave the
+protocol off (`//`) so it follows the page instead of forcing `http`.
 
 Redeploy. Then verify:
 
@@ -164,6 +193,11 @@ Redeploy. Then verify:
    and the popunder and Social Bar arrive a couple of seconds later.
 4. Visit `https://yourdomain.com/ads.txt` and confirm it shows your real line,
    not the placeholder comment.
+
+Locally, `npm run admin` → **Ads** → *What the built site serves* answers the
+same questions against `dist/` without a deploy. It is worth checking there
+first: the most common failure is saving a snippet and forgetting to rebuild,
+which looks identical to everything working.
 
 ### 4. Getting indexed
 

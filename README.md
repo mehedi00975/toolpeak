@@ -111,7 +111,7 @@ becoming usable.
 ## Tests
 
 ```
-npm test        # 282 tests, ~60 seconds
+npm test        # 317 tests, ~60 seconds
 ```
 
 | Suite | Covers |
@@ -127,6 +127,7 @@ npm test        # 282 tests, ~60 seconds
 | `ad-integration.test.js` | Adsterra snippet shapes, layout stability, ads.txt |
 | `deploy.test.js` | works on GitHub Pages and Cloudflare without rewrites |
 | `admin.test.js` | the admin panel's file writing, escaping and localhost binding |
+| `adsnippet.test.js` | Adsterra snippet checking, the document.write rewrite, ads.txt |
 
 Two things are worth knowing about the suite.
 
@@ -207,9 +208,23 @@ npm run admin        # http://localhost:8081
 ```
 
 A local control panel for the two jobs that otherwise mean editing files by
-hand: pasting ad codes, and writing articles. It has four tabs — a dashboard,
+hand: pasting ad codes, and writing articles. Five tabs — a dashboard, ads,
 the article list, a writing view, and settings — plus buttons to rebuild the
 site and run the tests.
+
+The **Ads** tab checks each snippet as it is pasted, because the three
+Adsterra units look alike and a wrong paste fails silently. It reads back the
+key, size and serving host so a correct paste gets confirmed; it catches
+banner code in the popunder box, `http://` that a browser will block as mixed
+content, and the same key used twice. Below that, a panel reads `dist/` and
+reports what the built site would really serve — saved settings and live ads
+are different things, and only the second one earns anything.
+
+It also rewrites `document.write`. Adsterra still issues banner code built on
+it, and because ads here wait for a consent click they always run after the
+document has closed — where `document.write` implicitly calls
+`document.open()` and blanks the page. The rewrite keeps the `atOptions` block
+and its ordering, and swaps the written tag for a plain async one.
 
 **It is a development tool and must never be deployed.** There is no login, it
 writes files, and it can run builds. It binds to `127.0.0.1` for that reason,
