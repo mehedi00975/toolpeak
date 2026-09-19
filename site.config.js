@@ -28,7 +28,10 @@ function read(name, fallback = "") {
   return value;
 }
 
-const siteUrl = read("SITE_URL", "https://toolpeak.com").replace(/\/+$/, "");
+// The default is the free Cloudflare Pages subdomain, so a fresh deploy is
+// correct with no dashboard configuration at all. Override SITE_URL once a
+// real domain is pointed at the project.
+const siteUrl = read("SITE_URL", "https://toolpeak.pages.dev").replace(/\/+$/, "");
 
 module.exports = {
   /* ------------------------------------------------------------------ *
@@ -41,8 +44,9 @@ module.exports = {
   url: siteUrl,
   locale: "en_US",
   lang: "en",
-  // CHANGE THIS to a mailbox you actually read. Adsterra and Google both check it.
-  email: read("CONTACT_EMAIL", "hello@toolpeak.com"),
+  // A mailbox that is actually read: Adsterra emails it during review, and
+  // visitors report broken tools through it.
+  email: read("CONTACT_EMAIL", "mh9346760@gmail.com"),
   // Optional: public social/profile URL shown on the About page. Leave blank to hide.
   publisher: read("PUBLISHER_NAME", "ToolPeak"),
   themeColor: "#1d4ed8",
