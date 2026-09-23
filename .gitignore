@@ -1,0 +1,19 @@
+# build output (Cloudflare Pages rebuilds this on every deploy)
+dist/
+
+# dependencies (the site itself has zero runtime deps; node_modules only appears
+# if you install optional test helpers)
+node_modules/
+
+# local environment — NEVER commit real Adsterra snippets or keys
+.env
+.env.*
+!.env.example
+
+# editor / OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+npm-debug.log*

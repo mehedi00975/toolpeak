@@ -1,0 +1,95 @@
+# Deploys the site to GitHub Pages.
+#
+# Ad snippets never appear in the repository. They live in
+# Settings -> Secrets and variables -> Actions, and are injected into the
+# build here, exactly as Cloudflare Pages environment variables would be.
+#
+# For this to serve the site at the root of your domain (which ads.txt
+# requires), the repository must be named <your-username>.github.io.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deploys at once; let a newer push replace a queued one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dev dependencies
+        run: npm ci
+
+      # The suite covers the tools, the consent gate and the ad wiring.
+      # A broken build should never reach the live site.
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # Public values. Safe as repository variables rather than secrets.
+          SITE_URL: ${{ vars.SITE_URL }}
+          CONTACT_EMAIL: ${{ vars.CONTACT_EMAIL }}
+          PUBLISHER_NAME: ${{ vars.PUBLISHER_NAME }}
+
+          # Secret: these contain your Adsterra account identifiers.
+          ADS_POPUNDER: ${{ secrets.ADS_POPUNDER }}
+          ADS_SOCIAL_BAR: ${{ secrets.ADS_SOCIAL_BAR }}
+          ADS_BANNER: ${{ secrets.ADS_BANNER }}
+          ADS_TXT: ${{ secrets.ADS_TXT }}
+
+          # Optional.
+          CF_BEACON_TOKEN: ${{ secrets.CF_BEACON_TOKEN }}
+          GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
+          BING_SITE_VERIFICATION: ${{ vars.BING_SITE_VERIFICATION }}
+          PINTEREST_SITE_VERIFICATION: ${{ vars.PINTEREST_SITE_VERIFICATION }}
+
+      # GitHub Pages runs Jekyll by default, which ignores files and folders
+      # beginning with an underscore. Nothing here needs Jekyll.
+      - name: Disable Jekyll processing
+        run: touch dist/.nojekyll
+
+      - name: Confirm ads.txt will be reachable
+        run: |
+          if [ ! -f dist/ads.txt ]; then
+            echo "::error::ads.txt was not generated"
+            exit 1
+          fi
+          if grep -q '^[^#]' dist/ads.txt; then
+            echo "ads.txt contains a live entry."
+          else
+            echo "::warning::ads.txt is still a placeholder. Set the ADS_TXT secret once Adsterra approves the site."
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
