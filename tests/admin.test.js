@@ -125,6 +125,9 @@ async function startPanel() {
   fs.cpSync(path.join(ROOT, "src"), path.join(sandbox, "src"), { recursive: true });
   fs.cpSync(path.join(ROOT, "scripts"), path.join(sandbox, "scripts"), { recursive: true });
   fs.cpSync(path.join(ROOT, "package.json"), path.join(sandbox, "package.json"));
+  // The panel reads the real config for its defaults, so the sandbox needs it
+  // too — without it the copy is not a faithful stand-in for a checkout.
+  fs.cpSync(path.join(ROOT, "site.config.js"), path.join(sandbox, "site.config.js"));
 
   const { spawn } = require("node:child_process");
   const child = spawn(process.execPath, [path.join(sandbox, "scripts", "admin.js")], {
@@ -188,6 +191,11 @@ test("admin: reports status without any settings configured", async () => {
     assert.strictEqual(typeof data.posts, "number");
     assert.strictEqual(data.tools, 10);
     assert.ok(Array.isArray(data.adsConfigured));
+
+    // The dashboard must report the URL the build would really use. Repeating
+    // the default in the panel let the two drift apart once already: the site
+    // built as pages.dev while the panel still claimed toolpeak.com.
+    assert.strictEqual(data.siteUrl, require("../site.config.js").url);
   } finally {
     panel.stop();
   }

@@ -34,6 +34,26 @@ const BLOG_DIR = path.join(ROOT, "src", "content", "blog");
 const TOOLS_DIR = path.join(ROOT, "src", "pages", "tools");
 const ENV_FILE = path.join(ROOT, ".env");
 
+/**
+ * The defaults the build itself would use, read fresh each time.
+ *
+ * site.config.js caches environment variables at require time, so it is loaded
+ * in a clean module registry — otherwise the panel would keep reporting the
+ * values that were current when it started, not the ones a build would use.
+ */
+function siteDefaults() {
+  // require.resolve throws when the file is absent, so it belongs inside the
+  // guard too — the config is missing in test sandboxes.
+  try {
+    const configPath = require.resolve("../site.config.js");
+    delete require.cache[configPath];
+    delete require.cache[require.resolve("../src/lib/env.js")];
+    return require(configPath);
+  } catch {
+    return { url: "", email: "" };
+  }
+}
+
 const PORT = Number(process.env.ADMIN_PORT) || 8081;
 const HOST = process.env.ADMIN_HOST || "127.0.0.1";
 
@@ -507,7 +527,9 @@ async function handleApi(req, res, url) {
       tools: toolSlugs().length,
       adsConfigured: configured,
       adsTxtSet: Boolean((stored.ADS_TXT || process.env.ADS_TXT || "").trim()),
-      siteUrl: stored.SITE_URL || process.env.SITE_URL || "https://toolpeak.com",
+      // Ask the real config rather than repeating its default here, which
+      // drifts the moment the default changes.
+      siteUrl: stored.SITE_URL || process.env.SITE_URL || siteDefaults().url,
       distBuilt: fs.existsSync(path.join(ROOT, "dist", "index.html"))
     });
   }
