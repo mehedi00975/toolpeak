@@ -1156,6 +1156,73 @@
   })();
 
   /* ------------------------------------------------------------------ *
+   * 11. Tool search & category filtering (Home and All Tools pages)
+   * ------------------------------------------------------------------ */
+  (function () {
+    var searchInput = $("#tool-search");
+    var tabs = $$(".filter-tabs .tab-btn");
+    var cards = $$("[data-tool-card]");
+    var noResults = $("#no-tools-match");
+    var groups = $$(".tool-category-group");
+
+    if (!searchInput && !tabs.length && !cards.length) return;
+
+    var currentFilter = "all";
+    var currentQuery = "";
+
+    function update() {
+      var visibleCount = 0;
+
+      cards.forEach(function (card) {
+        var cat = card.getAttribute("data-category") || "";
+        var name = card.getAttribute("data-name") || "";
+        var keywords = card.getAttribute("data-keywords") || "";
+        var text = (name + " " + keywords + " " + card.textContent).toLowerCase();
+
+        var matchCat = currentFilter === "all" || cat === currentFilter;
+        var matchQuery = !currentQuery || text.indexOf(currentQuery) !== -1;
+
+        if (matchCat && matchQuery) {
+          card.style.display = "";
+          visibleCount++;
+        } else {
+          card.style.display = "none";
+        }
+      });
+
+      // Update category group sections on /tools/ page if present
+      groups.forEach(function (group) {
+        var visibleInGroup = group.querySelectorAll("[data-tool-card]:not([style*='display: none'])").length;
+        group.style.display = visibleInGroup > 0 ? "" : "none";
+      });
+
+      if (noResults) {
+        noResults.hidden = visibleCount > 0;
+      }
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener("input", function () {
+        currentQuery = searchInput.value.trim().toLowerCase();
+        update();
+      });
+    }
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        tabs.forEach(function (t) {
+          t.classList.remove("is-active");
+          t.setAttribute("aria-selected", "false");
+        });
+        tab.classList.add("is-active");
+        tab.setAttribute("aria-selected", "true");
+        currentFilter = tab.getAttribute("data-filter") || "all";
+        update();
+      });
+    });
+  })();
+
+  /* ------------------------------------------------------------------ *
    * Shared: current year in the footer
    * ------------------------------------------------------------------ */
   $$("[data-year]").forEach(function (el) {

@@ -7,83 +7,85 @@ module.exports = {
   keywords: "percentage calculator, what is 20 percent of 150, percentage change calculator, percent increase, discount calculator, tip calculator",
 
   tool: `
-<div class="card">
-  <h2 style="margin-top:0">1. What is X% of Y?</h2>
-  <div class="fields">
-    <div>
-      <label class="lbl" for="pc-of-a">Percentage (%)</label>
-      <input type="number" id="pc-of-a" value="20" step="any" inputmode="decimal">
+<div class="calc-grid">
+  <div class="card">
+    <h2 style="margin-top:0">1. What is X% of Y?</h2>
+    <div class="fields">
+      <div>
+        <label class="lbl" for="pc-of-a">Percentage (%)</label>
+        <input type="number" id="pc-of-a" value="20" step="any" inputmode="decimal">
+      </div>
+      <div>
+        <label class="lbl" for="pc-of-b">of this number</label>
+        <input type="number" id="pc-of-b" value="150" step="any" inputmode="decimal">
+      </div>
     </div>
-    <div>
-      <label class="lbl" for="pc-of-b">of this number</label>
-      <input type="number" id="pc-of-b" value="150" step="any" inputmode="decimal">
+    <div class="result-box">
+      <span class="lbl" style="margin:0">Result</span>
+      <span class="out" id="pc-of-out">30</span>
     </div>
   </div>
-  <div class="result-box">
-    <span class="lbl" style="margin:0">Result</span>
-    <span class="out" id="pc-of-out">30</span>
-  </div>
-</div>
 
-<div class="card">
-  <h2 style="margin-top:0">2. A is what percent of B?</h2>
-  <div class="fields">
-    <div>
-      <label class="lbl" for="pc-what-a">This number</label>
-      <input type="number" id="pc-what-a" value="30" step="any" inputmode="decimal">
+  <div class="card">
+    <h2 style="margin-top:0">2. A is what percent of B?</h2>
+    <div class="fields">
+      <div>
+        <label class="lbl" for="pc-what-a">This number</label>
+        <input type="number" id="pc-what-a" value="30" step="any" inputmode="decimal">
+      </div>
+      <div>
+        <label class="lbl" for="pc-what-b">is what percent of</label>
+        <input type="number" id="pc-what-b" value="150" step="any" inputmode="decimal">
+      </div>
     </div>
-    <div>
-      <label class="lbl" for="pc-what-b">is what percent of</label>
-      <input type="number" id="pc-what-b" value="150" step="any" inputmode="decimal">
+    <div class="result-box">
+      <span class="lbl" style="margin:0">Result</span>
+      <span class="out" id="pc-what-out">20%</span>
     </div>
   </div>
-  <div class="result-box">
-    <span class="lbl" style="margin:0">Result</span>
-    <span class="out" id="pc-what-out">20%</span>
-  </div>
-</div>
 
-<div class="card">
-  <h2 style="margin-top:0">3. Percentage increase or decrease</h2>
-  <div class="fields">
-    <div>
-      <label class="lbl" for="pc-ch-a">From (original)</label>
-      <input type="number" id="pc-ch-a" value="150" step="any" inputmode="decimal">
+  <div class="card">
+    <h2 style="margin-top:0">3. Percentage increase or decrease</h2>
+    <div class="fields">
+      <div>
+        <label class="lbl" for="pc-ch-a">From (original)</label>
+        <input type="number" id="pc-ch-a" value="150" step="any" inputmode="decimal">
+      </div>
+      <div>
+        <label class="lbl" for="pc-ch-b">To (new)</label>
+        <input type="number" id="pc-ch-b" value="180" step="any" inputmode="decimal">
+      </div>
     </div>
-    <div>
-      <label class="lbl" for="pc-ch-b">To (new)</label>
-      <input type="number" id="pc-ch-b" value="180" step="any" inputmode="decimal">
+    <div class="result-box">
+      <span class="lbl" style="margin:0">Change</span>
+      <span class="out" id="pc-ch-out">+20% increase</span>
     </div>
   </div>
-  <div class="result-box">
-    <span class="lbl" style="margin:0">Change</span>
-    <span class="out" id="pc-ch-out">+20% increase</span>
-  </div>
-</div>
 
-<div class="card">
-  <h2 style="margin-top:0">4. Discount, tip or sales tax</h2>
-  <div class="fields">
-    <div>
-      <label class="lbl" for="pc-adj-base">Amount</label>
-      <input type="number" id="pc-adj-base" value="80" step="any" inputmode="decimal">
+  <div class="card">
+    <h2 style="margin-top:0">4. Discount, tip or sales tax</h2>
+    <div class="fields">
+      <div>
+        <label class="lbl" for="pc-adj-base">Amount</label>
+        <input type="number" id="pc-adj-base" value="80" step="any" inputmode="decimal">
+      </div>
+      <div>
+        <label class="lbl" for="pc-adj-pct">Percentage (%)</label>
+        <input type="number" id="pc-adj-pct" value="25" step="any" inputmode="decimal">
+      </div>
+      <div>
+        <label class="lbl" for="pc-adj-dir">Direction</label>
+        <select id="pc-adj-dir">
+          <option value="decrease">Subtract (discount)</option>
+          <option value="increase">Add (tip / tax / markup)</option>
+        </select>
+      </div>
     </div>
-    <div>
-      <label class="lbl" for="pc-adj-pct">Percentage (%)</label>
-      <input type="number" id="pc-adj-pct" value="25" step="any" inputmode="decimal">
+    <div class="result-box">
+      <span class="lbl" style="margin:0">Final amount</span>
+      <span class="out" id="pc-adj-out">60</span>
+      <p class="hint" id="pc-adj-detail" style="margin-bottom:0"></p>
     </div>
-    <div>
-      <label class="lbl" for="pc-adj-dir">Direction</label>
-      <select id="pc-adj-dir">
-        <option value="decrease">Subtract (discount)</option>
-        <option value="increase">Add (tip / tax / markup)</option>
-      </select>
-    </div>
-  </div>
-  <div class="result-box">
-    <span class="lbl" style="margin:0">Final amount</span>
-    <span class="out" id="pc-adj-out">60</span>
-    <p class="hint" id="pc-adj-detail" style="margin-bottom:0"></p>
   </div>
 </div>`,
 

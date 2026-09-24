@@ -35,6 +35,8 @@ const TOOLS = [
     slug: "word-counter",
     name: "Word Counter",
     short: "Word Counter",
+    category: "text",
+    categoryName: "Text & Writing",
     icon: "&#128221;",
     blurb: "Count words, characters, sentences and paragraphs as you type, with reading and speaking time.",
     keywords: "word counter, character count, words to pages, reading time calculator"
@@ -43,6 +45,8 @@ const TOOLS = [
     slug: "case-converter",
     name: "Text Case Converter",
     short: "Case Converter",
+    category: "text",
+    categoryName: "Text & Writing",
     icon: "&#127344;",
     blurb: "Switch text between UPPERCASE, lowercase, Title Case, Sentence case, camelCase, snake_case and more.",
     keywords: "case converter, uppercase to lowercase, title case converter, camelcase converter"
@@ -51,6 +55,8 @@ const TOOLS = [
     slug: "percentage-calculator",
     name: "Percentage Calculator",
     short: "Percentage",
+    category: "calc",
+    categoryName: "Calculators & Math",
     icon: "&#128200;",
     blurb: "Work out X% of Y, what percent one number is of another, percentage change, plus discounts and tips.",
     keywords: "percentage calculator, percent change, what is 20 percent of 150, discount calculator"
@@ -59,6 +65,8 @@ const TOOLS = [
     slug: "age-calculator",
     name: "Age Calculator",
     short: "Age",
+    category: "calc",
+    categoryName: "Calculators & Math",
     icon: "&#127874;",
     blurb: "Exact age in years, months and days from a date of birth, plus total weeks, hours and the next birthday.",
     keywords: "age calculator, date of birth calculator, how old am i, age in days"
@@ -67,6 +75,8 @@ const TOOLS = [
     slug: "bmi-calculator",
     name: "BMI Calculator",
     short: "BMI",
+    category: "calc",
+    categoryName: "Calculators & Math",
     icon: "&#9878;",
     blurb: "Body mass index from kg and cm or pounds and feet, with your healthy weight range for that height.",
     keywords: "bmi calculator, body mass index, healthy weight range, bmi chart"
@@ -75,6 +85,8 @@ const TOOLS = [
     slug: "unit-converter",
     name: "Unit Converter",
     short: "Units",
+    category: "calc",
+    categoryName: "Calculators & Math",
     icon: "&#128207;",
     blurb: "Convert length, weight, temperature, volume, area, speed, time and digital storage between any units.",
     keywords: "unit converter, inches to cm, kg to lbs, celsius to fahrenheit, mb to gb"
@@ -83,6 +95,8 @@ const TOOLS = [
     slug: "image-compressor",
     name: "Image Compressor",
     short: "Image Compressor",
+    category: "media",
+    categoryName: "Media & Images",
     icon: "&#128444;",
     blurb: "Shrink a photo to an exact size limit such as 200 KB. Runs in your browser, nothing is uploaded.",
     keywords: "image compressor, compress image to 200kb, reduce photo size, resize image online"
@@ -91,6 +105,8 @@ const TOOLS = [
     slug: "password-generator",
     name: "Password Generator",
     short: "Password",
+    category: "security",
+    categoryName: "Security & Privacy",
     icon: "&#128273;",
     blurb: "Generate strong random passwords or memorable passphrases, with a real entropy and crack-time estimate.",
     keywords: "password generator, strong password, random password, passphrase generator"
@@ -99,6 +115,8 @@ const TOOLS = [
     slug: "qr-code-generator",
     name: "QR Code Generator",
     short: "QR Code",
+    category: "security",
+    categoryName: "Security & Privacy",
     icon: "&#128241;",
     blurb: "Make a QR code for a link, Wi-Fi network, email, phone number or contact card. Download PNG or SVG.",
     keywords: "qr code generator, free qr code, wifi qr code, qr code png download"
@@ -107,6 +125,8 @@ const TOOLS = [
     slug: "text-diff",
     name: "Text Compare",
     short: "Text Compare",
+    category: "text",
+    categoryName: "Text & Writing",
     icon: "&#128203;",
     blurb: "Compare two blocks of text and highlight every added, removed and changed line, word by word.",
     keywords: "text compare, diff checker, compare two texts, find difference between texts"
@@ -133,13 +153,15 @@ const LOGO_SVG =
 function header(currentPath) {
   const links = [
     { href: "/", label: "Home" },
-    ...TOOLS.slice(0, 6).map(t => ({ href: `/tools/${t.slug}.html`, label: t.short })),
-    { href: "/tools/", label: "All tools" },
-    { href: "/blog/", label: "Guides" }
+    { href: "/tools/", label: "All Tools" },
+    { href: "/blog/", label: "Guides" },
+    { href: "/about.html", label: "About" },
+    { href: "/contact.html", label: "Contact" }
   ];
 
   const items = links.map(l => {
-    const current = l.href === currentPath ? ' aria-current="page"' : "";
+    const isCurrent = l.href === "/" ? currentPath === "/" : currentPath.startsWith(l.href);
+    const current = isCurrent ? ' aria-current="page"' : "";
     return `<a href="${l.href}"${current}>${l.label}</a>`;
   }).join("");
 
@@ -147,7 +169,9 @@ function header(currentPath) {
 <header class="masthead"><div class="wrap in">
 <a class="logo" href="/">${LOGO_SVG}<span>${esc(site.name)}</span></a>
 <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
-<nav class="nav" id="site-nav" aria-label="Main navigation">${items}</nav>
+<nav class="nav" id="site-nav" aria-label="Main navigation">
+${items}
+</nav>
 </div></header>`;
 }
 
@@ -161,9 +185,9 @@ function footer() {
 
   return `<footer><div class="wrap">
 <div class="cols">
-  <div>
-    <strong>${esc(site.name)}</strong>
-    <p>${esc(site.tagline)}. Every tool runs on your own device — no sign-up, no uploads, no limits.</p>
+  <div class="footer-brand">
+    <a class="logo" href="/">${LOGO_SVG}<span>${esc(site.name)}</span></a>
+    <p>${esc(site.tagline)}. Free, fast utilities that run 100% on your own device &mdash; zero uploads, no accounts, and no limits.</p>
   </div>
   <div><b>Tools</b><nav>${toolLinks}</nav></div>
   <div><b>Site</b><nav>
