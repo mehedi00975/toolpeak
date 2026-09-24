@@ -168,57 +168,94 @@ function breadcrumbHtml(trail) {
  * ------------------------------------------------------------------ */
 
 function buildHome(tools, posts) {
-  const tiles = tools.map(t => `<a class="tile" href="/tools/${t.slug}.html">
-  <span class="tile-ico" aria-hidden="true">${t.icon}</span>
+  const tiles = tools.map(t => `<a class="tile" href="/tools/${t.slug}.html" data-tool-card data-category="${t.category || 'tool'}" data-name="${esc(t.name).toLowerCase()}" data-keywords="${esc(t.keywords || '').toLowerCase()}">
+  <div class="tile-header">
+    <span class="tile-ico" aria-hidden="true">${t.icon}</span>
+    <span class="tile-pill">${esc(t.categoryName || 'Tool')}</span>
+  </div>
   <b>${esc(t.name)}</b>
   <span>${esc(t.blurb)}</span>
+  <span class="tile-cta">Open tool &rarr;</span>
 </a>`).join("\n");
 
   const recent = posts.slice(0, 4).map(p => `<article class="post-item">
+  <div class="post-item-header">
+    <span class="badge ok">${p.readingTime || 5} min read</span>
+    <time class="post-meta" datetime="${p.date}">${formatDate(p.date)}</time>
+  </div>
   <h3><a href="/blog/${p.slug}.html">${esc(p.title)}</a></h3>
   <p>${esc(p.description)}</p>
-  <p class="post-meta">${formatDate(p.date)} &middot; ${p.readingTime || 5} min read</p>
+  <span class="post-cta">Read guide &rarr;</span>
 </article>`).join("\n");
 
   const body = `
-<section>
+<section class="hero-section">
+  <div class="hero-badge"><span class="badge-dot"></span> 100% Free &middot; Runs in Browser &middot; Zero Uploads</div>
   <h1>Free online tools that run in your browser</h1>
   <p class="lede lede-lg">Ten everyday utilities that work instantly, without an account and without uploading anything. Your text, photos and passwords never leave your device.</p>
-  <div class="grid">
+
+  <div class="search-wrap">
+    <div class="search-input-box">
+      <span class="search-icon" aria-hidden="true">&#128269;</span>
+      <input type="search" id="tool-search" class="tool-search" placeholder="Search 10 free tools (e.g. word counter, percentage, image, qr...)" aria-label="Search tools" autocomplete="off">
+    </div>
+    <div class="filter-tabs" role="tablist" aria-label="Tool categories">
+      <button type="button" class="tab-btn is-active" data-filter="all">All Tools <span class="tab-badge">10</span></button>
+      <button type="button" class="tab-btn" data-filter="text">Text &amp; Writing <span class="tab-badge">3</span></button>
+      <button type="button" class="tab-btn" data-filter="calc">Calculators &amp; Math <span class="tab-badge">4</span></button>
+      <button type="button" class="tab-btn" data-filter="security">Security &amp; Privacy <span class="tab-badge">2</span></button>
+      <button type="button" class="tab-btn" data-filter="media">Media &amp; Files <span class="tab-badge">1</span></button>
+    </div>
+  </div>
+
+  <div class="grid" id="tools-grid">
 ${tiles}
+  </div>
+  <div id="no-tools-match" class="no-results-box" hidden>
+    <p>No tools matched your search.</p>
   </div>
 </section>
 
 ${adSlot()}
 
-<section class="card">
-  <h2>Why these tools are different</h2>
-  <div class="fields fields-2" style="margin-top:1rem">
-    <div>
-      <h3 style="margin-top:0">Nothing is uploaded</h3>
+<section class="features-wrap">
+  <div class="section-heading">
+    <h2>Why these tools are different</h2>
+    <p class="section-desc">Designed with privacy and speed first. No cloud processing, no trackers, no limits.</p>
+  </div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon" aria-hidden="true">&#128274;</div>
+      <h3>Nothing is uploaded</h3>
       <p class="muted">Every calculation happens in your browser. Compress a passport scan or compare a confidential contract without it touching a server &mdash; because there is no server to touch.</p>
     </div>
-    <div>
-      <h3 style="margin-top:0">Instant results</h3>
+    <div class="feature-card">
+      <div class="feature-icon" aria-hidden="true">&#9889;</div>
+      <h3>Instant results</h3>
       <p class="muted">No round trip means no spinner. Numbers update as you type, and each page is a single self-contained file that loads in under a second on mobile data.</p>
     </div>
-    <div>
-      <h3 style="margin-top:0">No account, ever</h3>
+    <div class="feature-card">
+      <div class="feature-icon" aria-hidden="true">&#127873;</div>
+      <h3>No account, ever</h3>
       <p class="muted">No sign-up, no email wall, no free tier with a hidden limit, no watermark on your output. Open the page, use the tool, close the tab.</p>
     </div>
-    <div>
-      <h3 style="margin-top:0">Works offline</h3>
+    <div class="feature-card">
+      <div class="feature-icon" aria-hidden="true">&#128246;</div>
+      <h3>Works offline</h3>
       <p class="muted">Once a page has loaded you can disconnect completely and keep working. It is the simplest possible proof that your data is staying put.</p>
     </div>
   </div>
 </section>
 
-${posts.length ? `<section>
-  <h2>Guides &amp; explainers</h2>
+${posts.length ? `<section class="guides-section">
+  <div class="section-heading">
+    <h2>Guides &amp; explainers</h2>
+    <p class="section-desc">Practical tips, formulas, and step-by-step guides for everyday writing, conversions, and calculations.</p>
+  </div>
   <div class="post-list">
 ${recent}
   </div>
-  <p style="margin-top:1rem"><a href="/blog/">Read all guides &rarr;</a></p>
+  <p class="guides-all-link"><a href="/blog/">Read all ${posts.length} guides &rarr;</a></p>
 </section>` : ""}`;
 
   return page({
@@ -295,18 +332,53 @@ function buildToolsIndex(tools) {
     { name: "Tools", href: "/tools/" }
   ];
 
-  const tiles = tools.map(t => `<a class="tile" href="/tools/${t.slug}.html">
-  <span class="tile-ico" aria-hidden="true">${t.icon}</span>
-  <b>${esc(t.name)}</b>
-  <span>${esc(t.blurb)}</span>
-</a>`).join("\n");
+  const categories = [
+    { id: "text", name: "Text & Writing Tools", desc: "Count words, switch letter cases, and compare documents line by line." },
+    { id: "calc", name: "Calculators & Math", desc: "Calculate percentages, exact ages, BMI healthy ranges, and convert units." },
+    { id: "security", name: "Security & Privacy", desc: "Generate cryptographically secure passwords and customizable QR codes." },
+    { id: "media", name: "Media & Images", desc: "Compress and optimize photos directly in your browser without uploading." }
+  ];
+
+  const catHtml = categories.map(cat => {
+    const catTools = tools.filter(t => t.category === cat.id);
+    const tiles = catTools.map(t => `<a class="tile" href="/tools/${t.slug}.html" data-tool-card data-category="${t.category}" data-name="${esc(t.name).toLowerCase()}" data-keywords="${esc(t.keywords || '').toLowerCase()}">
+      <div class="tile-header">
+        <span class="tile-ico" aria-hidden="true">${t.icon}</span>
+        <span class="tile-pill">${esc(t.categoryName)}</span>
+      </div>
+      <b>${esc(t.name)}</b>
+      <span>${esc(t.blurb)}</span>
+      <span class="tile-cta">Open tool &rarr;</span>
+    </a>`).join("\n");
+
+    return `<div class="tool-category-group" data-group="${cat.id}">
+      <div class="category-header">
+        <h2>${cat.name}</h2>
+        <p class="muted">${cat.desc}</p>
+      </div>
+      <div class="grid">
+        ${tiles}
+      </div>
+    </div>`;
+  }).join("\n");
 
   const body = `
 ${breadcrumbHtml(trail)}
 <h1>All tools</h1>
 <p class="lede">Every tool on ${esc(site.name)}. All free, all browser-based, none of them requiring an account.</p>
-<div class="grid">
-${tiles}
+
+<div class="search-wrap" style="margin: 1.5rem 0 2rem;">
+  <div class="search-input-box">
+    <span class="search-icon" aria-hidden="true">&#128269;</span>
+    <input type="search" id="tool-search" class="tool-search" placeholder="Search 10 free tools..." aria-label="Search tools" autocomplete="off">
+  </div>
+</div>
+
+<div id="category-sections">
+${catHtml}
+</div>
+<div id="no-tools-match" class="no-results-box" hidden>
+  <p>No tools matched your search.</p>
 </div>
 ${adSlot()}`;
 
@@ -379,9 +451,13 @@ function buildBlogIndex(posts) {
   ];
 
   const items = posts.map(p => `<article class="post-item">
+  <div class="post-item-header">
+    <span class="badge ok">${p.readingTime || 5} min read</span>
+    <time class="post-meta" datetime="${p.date}">${formatDate(p.date)}</time>
+  </div>
   <h3><a href="/blog/${p.slug}.html">${esc(p.title)}</a></h3>
   <p>${esc(p.description)}</p>
-  <p class="post-meta">${formatDate(p.date)} &middot; ${p.readingTime || 5} min read</p>
+  <span class="post-cta">Read guide &rarr;</span>
 </article>`).join("\n");
 
   const body = `
